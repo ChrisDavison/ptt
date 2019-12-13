@@ -1,6 +1,6 @@
 [package]
 name = "ptt"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
 edition = "2018"
 description = "PlainText Template utility - CLI to fill in plaintext templates"
@@ -12,4 +12,4 @@ license = "MIT"
 [dependencies]
 chrono = "0.4.0"
 shellexpand = "1.0.0"
-hmac-sha256 = "0.1.2"
+crypto-hash = "0.3.4"

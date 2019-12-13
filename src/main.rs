@@ -4,7 +4,7 @@ use std::io::Write;
 
 type Result<T> = std::result::Result<T, Box<dyn ::std::error::Error>>;
 
-use hmac_sha256::Hash;
+use crypto_hash::{hex_digest, Algorithm};
 
 static USAGE: &'static str = "usage: ptt [-l] <template> <filename>";
 
@@ -21,8 +21,9 @@ fn prompt_for_hash() -> String {
     print!("to hash: ");
     std::io::stdout().flush().unwrap();
     std::io::stdin().read_line(&mut response).unwrap();
-    let hashed = Hash::hash(&response.trim().as_bytes());
-    format!("hash: {}\n", String::from_utf8_lossy(&hashed))
+    let hashed = hex_digest(Algorithm::SHA256, &response.trim().as_bytes());
+    println!("{:?}", hashed);
+    format!("hash: {}\n", hashed)
 }
 
 fn prompt_for_tags() -> String {
