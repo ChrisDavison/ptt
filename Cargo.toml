@@ -1,15 +1,13 @@
 [package]
 name = "ptt"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
 edition = "2018"
-description = "PlainText Template utility - CLI to fill in plaintext templates"
+description = "PlainText Template utility - Quickly clone templates to current location"
 repository = "https://www.github.com/ChrisDavison/ptt"
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.0"
 shellexpand = "1.0.0"
-crypto-hash = "0.3.4"

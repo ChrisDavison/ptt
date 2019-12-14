@@ -1,117 +1,64 @@
-use chrono::Utc;
 use shellexpand::tilde;
-use std::io::Write;
+use std::fs;
+use std::path::PathBuf;
 
 type Result<T> = std::result::Result<T, Box<dyn ::std::error::Error>>;
 
-use crypto_hash::{hex_digest, Algorithm};
-
 static USAGE: &'static str = "usage: ptt [-l] <template> <filename>";
-
-fn prompt_for_string(prompt: &str) -> String {
-    let mut response = String::new();
-    print!("{}: ", prompt);
-    std::io::stdout().flush().unwrap();
-    std::io::stdin().read_line(&mut response).unwrap();
-    format!("{}: {}\n", prompt, response.trim())
-}
-
-fn prompt_for_hash() -> String {
-    let mut response = String::new();
-    print!("to hash: ");
-    std::io::stdout().flush().unwrap();
-    std::io::stdin().read_line(&mut response).unwrap();
-    let hashed = hex_digest(Algorithm::SHA256, &response.trim().as_bytes());
-    println!("{:?}", hashed);
-    format!("hash: {}\n", hashed)
-}
-
-fn prompt_for_tags() -> String {
-    let mut response = String::new();
-    print!("tags: ");
-    std::io::stdout().flush().unwrap();
-    std::io::stdin().read_line(&mut response).unwrap();
-    let tags: Vec<String> = response
-        .trim()
-        .split(" ")
-        .map(|x| format!("@{}", x))
-        .collect();
-    format!("{}\n", tags.join(" "))
-}
-
-fn get_matching_template(templatename: &str) -> Result<String> {
-    let mut template = std::path::PathBuf::from(tilde("~/.ptt_templates").to_string());
-    template.push(format!("{}.txt", templatename));
-    let contents = std::fs::read_to_string(template)?;
-    Ok(contents)
-}
 
 fn list_available_templates() -> Result<()> {
     let mut templates = Vec::new();
-    let template_dir = std::path::PathBuf::from(tilde("~/.ptt_templates").to_string());
+    let template_dir = PathBuf::from(tilde("~/.ptt_templates").to_string());
     for entry in template_dir.read_dir()? {
         if let Ok(entry) = entry {
-            let fname = entry.file_name();
-            templates.push(fname.to_string_lossy().to_string());
+            if entry.path().is_file() {
+                let fname = entry.file_name().to_string_lossy().to_string();
+                if fname.ends_with(".txt") {
+                    templates.push(fname[..fname.len() - 4].to_string());
+                } else {
+                    templates.push(fname);
+                }
+            }
         }
     }
-    println!("Available templates");
-    println!("{}", templates.join(", "));
+    println!("Templates: {}", templates.join(", "));
 
     Ok(())
 }
 
-fn main() -> Result<()> {
-    get_matching_template("bookmark")?;
+fn main() {
     let template_dir = std::path::PathBuf::from(tilde("~/.ptt_templates").to_string());
     if !template_dir.exists() {
-        return Err(format!("Must have some plaintext templates in ~/.ptt_templates/").into());
+        eprintln!("Must have some plaintext templates in ~/.ptt_templates/");
+        return;
     }
 
-    let mut args = Vec::new();
-    for arg in std::env::args().skip(1) {
-        if arg == "-l" {
-            return list_available_templates();
-        } else {
-            args.push(arg);
-        }
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().filter(|&x| x == "-l").count() > 0 {
+        list_available_templates().unwrap();
+        return;
     }
-    let (template, filename) = if args.len() < 1 {
-        return Err(format!("{}", USAGE).into());
-    } else if args.len() == 1 {
-        let mut response = String::new();
-        print!("Template: ");
-        std::io::stdout().flush().unwrap();
-        std::io::stdin().read_line(&mut response).unwrap();
-        (response, args[0].clone())
-    } else {
-        (
-            args[0].clone(),
-            format!("{}.txt", args[1..].join("-").clone()),
-        )
+
+    let templatename = match args.get(0) {
+        Some(t) => t,
+        None => {
+            println!("Not enough args: {}", USAGE);
+            return;
+        }
+    };
+    let filename = match args.get(1..) {
+        Some(f) => f.join("-") + ".txt",
+        None => {
+            println!("Not enough args: {}", USAGE);
+            return;
+        }
     };
 
-    println!("Filling template: `{}` for file `{}`\n", template, filename);
-
-    let mut filled_template = String::new();
-    for line in get_matching_template(&template)?.lines() {
-        let parts: Vec<&str> = line.split(": ").collect();
-        let prompt = parts[0];
-        let replace = parts[1..].join(": ");
-        if line.is_empty() {
-            filled_template += "\n";
-        } else if replace == "<DATE>" {
-            let date = Utc::now().format("%Y-%m-%dT%H:%M:%S%Z");
-            filled_template += &format!("date: {}\n", date).to_string();
-        } else if replace == "<HASH>" {
-            filled_template += &prompt_for_hash();
-        } else if line == "<TAGS>" {
-            filled_template += &prompt_for_tags();
-        } else {
-            filled_template += &prompt_for_string(prompt);
-        };
+    let templatefn =
+        PathBuf::from(tilde(&format!("~/.ptt_templates/{}.txt", templatename)).to_string());
+    if templatefn.exists() {
+        fs::copy(templatefn, filename).expect("Failed to copy template to file");
+    } else {
+        println!("Template `{}` doesn't exist", templatename);
     }
-    println!("{}", filled_template);
-    std::fs::write(filename, filled_template)?;
-    Ok(())
 }
