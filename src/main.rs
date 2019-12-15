@@ -34,7 +34,7 @@ fn main() {
     }
 
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.iter().filter(|&x| x == "-l").count() > 0 {
+    if args.is_empty() || args.iter().filter(|&x| x == "-l").count() > 0 {
         list_available_templates().unwrap();
         return;
     }
