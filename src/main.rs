@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 type Result<T> = std::result::Result<T, Box<dyn ::std::error::Error>>;
 
-static USAGE: &'static str = "usage: ptt [-l] <template> <filename>";
+static USAGE: &'static str = "usage: ptt [-l|-h] <template> <filename>";
 
 fn list_available_templates() -> Result<()> {
     let mut templates = Vec::new();
@@ -36,6 +36,11 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() || args.iter().filter(|&x| x == "-l").count() > 0 {
         list_available_templates().unwrap();
+        return;
+    }
+
+    if args.iter().filter(|&x| x == "-h").count() > 0 {
+        println!("{}", USAGE);
         return;
     }
 
