@@ -52,7 +52,13 @@ fn main() {
         }
     };
     let filename = match args.get(1..) {
-        Some(f) => f.join("-") + ".txt",
+        Some(f) => {
+            if f.is_empty() {
+                println!("Not enough args: {}", USAGE);
+                return;
+            }
+            f.join("-") + ".txt"
+        }
         None => {
             println!("Not enough args: {}", USAGE);
             return;
