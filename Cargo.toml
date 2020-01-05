@@ -1,6 +1,6 @@
 [package]
 name = "ptt"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
 edition = "2018"
 description = "PlainText Template utility - Quickly clone templates to current location"
@@ -11,3 +11,4 @@ license = "MIT"
 
 [dependencies]
 shellexpand = "1.0.0"
+chrono = "0.4.0"
