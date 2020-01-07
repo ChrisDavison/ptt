@@ -69,11 +69,11 @@ impl Template {
         // no date & no filename = return err
         let fname = match filename {
             Some(f) => {
-                let mut out = String::new();
+                let mut out = Vec::new();
                 for s in f {
-                    out.push_str(s.to_string().as_ref())
+                    out.push(s.to_string())
                 }
-                out
+                out.join("-")
             }
             None => String::new(),
         };
