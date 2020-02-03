@@ -1,6 +1,6 @@
 [package]
 name = "ptt"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
 edition = "2018"
 description = "PlainText Template utility - Quickly clone templates to current location"

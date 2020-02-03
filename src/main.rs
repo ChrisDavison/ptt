@@ -102,7 +102,7 @@ fn get_template_name(p: PathBuf) -> String {
     let no_ext_fname = fname.trim_end_matches(".txt");
     if no_ext_fname.starts_with("DATE-") {
         let no_ext_no_date_fname = no_ext_fname.trim_start_matches("DATE-");
-        format!("{} (D)", no_ext_no_date_fname.to_string())
+        format!("(DATE) {}", no_ext_no_date_fname.to_string())
     } else {
         no_ext_fname.to_string()
     }
@@ -118,7 +118,11 @@ fn list_available_templates() -> Result<()> {
             }
         }
     }
-    println!("Templates: {}", templates.join(", "));
+    println!("Templates\n");
+    templates.sort();
+    for template in templates {
+        println!("- {}", template);
+    }
 
     Ok(())
 }
