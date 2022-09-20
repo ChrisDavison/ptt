@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use clap::{Parser, Subcommand};
+use clap::{AppSettings, Parser, Subcommand};
 use shellexpand::tilde;
 
 mod template;
@@ -20,6 +20,9 @@ enum Command {
     },
     /// List available templates
     List,
+    #[clap(setting=AppSettings::Hidden)]
+    /// Display a manpage that can be exported to $HOME/.local/share/man/ptt.1
+    Man,
 }
 
 fn main() {
@@ -47,14 +50,11 @@ fn try_main() -> Result<()> {
                 Some(filename.join("-"))
             };
             let template = Template::new(template)?;
-            match template.invoke(filename) {
-                Ok(filename_out) => {
-                    println!("Created: '{}'", filename_out);
-                    Ok(())
-                }
-                Err(e) => Err(e),
-            }
+            template.invoke(filename).map(|fn_out| {
+                println!("Created '{}'", fn_out);
+            })
         }
         Command::List => list_available_templates(),
+        Command::Man => todo!(),
     }
 }

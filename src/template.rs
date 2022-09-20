@@ -68,6 +68,10 @@ impl Template {
             (false, false) => Err(anyhow!("Filename empty and not dated")),
         }
     }
+
+    fn prompt_replaces(self) -> Result<()> {
+        todo!()
+    }
 }
 
 pub fn get_template_name(p: PathBuf) -> String {
