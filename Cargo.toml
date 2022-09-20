@@ -12,3 +12,5 @@ license = "MIT"
 [dependencies]
 shellexpand = "1.0.0"
 chrono = "0.4.0"
+anyhow = "1.0.65"
+clap = { version = "3.2.22", features = ["derive"] }
