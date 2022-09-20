@@ -16,10 +16,11 @@ pub struct Template {
     filepath: PathBuf,
     dated: bool,
     dateformat: String,
+    verbose: bool,
 }
 
 impl Template {
-    pub fn new(template_name: impl ToString, format: String) -> Result<Template> {
+    pub fn new(template_name: impl ToString, format: String, verbose: bool) -> Result<Template> {
         let template_name = template_name.to_string();
         let fn_with_date = PathBuf::from(
             tilde(&format!("~/.ptt_templates/DATE-{}.txt", template_name)).to_string(),
@@ -32,6 +33,7 @@ impl Template {
                 filepath: fn_with_date,
                 dated: true,
                 dateformat: format,
+                verbose,
             })
         } else if fn_no_date.exists() {
             Ok(Template {
@@ -39,9 +41,12 @@ impl Template {
                 filepath: fn_no_date,
                 dated: false,
                 dateformat: format,
+                verbose,
             })
         } else {
-            Err(anyhow!("BLAH"))
+            Err(anyhow!(
+                "Couldn't find template `{template_name}`, with DATE- or without"
+            ))
         }
     }
 
@@ -55,14 +60,17 @@ impl Template {
             Some(f) => f.to_string(),
             None => self.name.clone(),
         };
+        let contents = std::fs::read_to_string(&self.filepath)?;
+        if self.verbose {
+            println!("{}", contents);
+        }
+        let new_contents = find_and_replace_moustaches(&contents)?;
         if self.dated {
             let fname = vec![nowstr, self.name.clone()].join("-") + ".txt";
-            fs::copy(self.filepath.clone(), fname.clone())
-                .expect("Failed to copy template to file");
+            fs::write(fname.clone(), new_contents)?;
             Ok(fname)
         } else if filename.is_some() {
-            fs::copy(self.filepath.clone(), fname.clone() + ".txt")
-                .expect("Failed to copy template to file");
+            fs::write(fname.clone() + ".txt", new_contents)?;
             Ok(fname)
         } else {
             Err(anyhow!("Filename empty and not dated"))
@@ -120,6 +128,12 @@ pub fn replace_moustaches(txt: &str, map: IndexMap<String, String>) -> String {
         txt = txt.replace(&to_rep, &v).to_string();
     }
     txt
+}
+
+fn find_and_replace_moustaches(txt: &str) -> Result<String> {
+    let mut moustaches = find_moustaches(txt);
+    get_response_for_moustaches(&mut moustaches)?;
+    Ok(replace_moustaches(txt, moustaches))
 }
 
 #[cfg(test)]

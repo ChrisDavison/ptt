@@ -24,6 +24,9 @@ enum Command {
         #[clap(short = 'f', long, default_value = "%Y-%m-%d")]
         /// Date format to use for dated templates
         format: String,
+        #[clap(short, long)]
+        /// Show template before prompting for replacements
+        verbose: bool,
     },
     /// List available templates
     List,
@@ -56,13 +59,14 @@ fn try_main() -> Result<()> {
             template,
             filename,
             format,
+            verbose,
         } => {
             let filename = if filename.is_empty() {
                 None
             } else {
                 Some(filename.join("-"))
             };
-            let template = Template::new(template, format)?;
+            let template = Template::new(template, format, verbose)?;
             template.invoke(filename).map(|fn_out| {
                 println!("Created '{}'", fn_out);
             })
