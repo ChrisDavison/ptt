@@ -1,17 +1,25 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
+use indexmap::IndexMap;
+use regex::Regex;
 use shellexpand::tilde;
 use std::fs;
 use std::path::PathBuf;
+
+lazy_static! {
+    static ref RE: Regex = Regex::new("\\{\\{(?P<moustache>[a-zA-Z]+)\\}\\}")
+        .expect("Couldn't create moustache regex");
+}
 
 pub struct Template {
     name: String,
     filepath: PathBuf,
     dated: bool,
+    dateformat: String,
 }
 
 impl Template {
-    pub fn new(template_name: impl ToString) -> Result<Template> {
+    pub fn new(template_name: impl ToString, format: String) -> Result<Template> {
         let template_name = template_name.to_string();
         let fn_with_date = PathBuf::from(
             tilde(&format!("~/.ptt_templates/DATE-{}.txt", template_name)).to_string(),
@@ -23,12 +31,14 @@ impl Template {
                 name: template_name,
                 filepath: fn_with_date,
                 dated: true,
+                dateformat: format,
             })
         } else if fn_no_date.exists() {
             Ok(Template {
                 name: template_name,
                 filepath: fn_no_date,
                 dated: false,
+                dateformat: format,
             })
         } else {
             Err(anyhow!("BLAH"))
@@ -37,44 +47,30 @@ impl Template {
 
     pub fn invoke(&self, filename: Option<impl ToString>) -> Result<String> {
         let now: DateTime<Utc> = Utc::now();
-        let nowstr = now.format("%Y%m%d").to_string();
+        let nowstr = now.format(&self.dateformat).to_string();
 
-        // dated & filename = date-filename
-        // dated & no filename = date-templatename
-        // no date & filename = filename
-        // no date & no filename = return err
-        let fname = match filename {
+        // If we give a filename, use that for the output.
+        // If not, use the name of the template for the output
+        let fname = match &filename {
             Some(f) => f.to_string(),
-            None => String::new(),
+            None => self.name.clone(),
         };
-        match (self.dated, fname.is_empty()) {
-            (true, false) => {
-                let fname = vec![nowstr, fname].join("-") + ".txt";
-                fs::copy(self.filepath.clone(), fname.clone())
-                    .expect("Failed to copy template to file");
-                Ok(fname)
-            }
-            (true, true) => {
-                let fname = vec![nowstr, self.name.clone()].join("-") + ".txt";
-                fs::copy(self.filepath.clone(), fname.clone())
-                    .expect("Failed to copy template to file");
-                Ok(fname)
-            }
-            (false, true) => {
-                fs::copy(self.filepath.clone(), fname.clone() + ".txt")
-                    .expect("Failed to copy template to file");
-                Ok(fname)
-            }
-            (false, false) => Err(anyhow!("Filename empty and not dated")),
+        if self.dated {
+            let fname = vec![nowstr, self.name.clone()].join("-") + ".txt";
+            fs::copy(self.filepath.clone(), fname.clone())
+                .expect("Failed to copy template to file");
+            Ok(fname)
+        } else if filename.is_some() {
+            fs::copy(self.filepath.clone(), fname.clone() + ".txt")
+                .expect("Failed to copy template to file");
+            Ok(fname)
+        } else {
+            Err(anyhow!("Filename empty and not dated"))
         }
-    }
-
-    fn prompt_replaces(self) -> Result<()> {
-        todo!()
     }
 }
 
-pub fn get_template_name(p: PathBuf) -> String {
+fn get_template_name(p: PathBuf) -> String {
     let fname = p.file_name().unwrap().to_string_lossy().to_string();
     let no_ext_fname = fname.trim_end_matches(".txt");
     if no_ext_fname.starts_with("DATE-") {
@@ -100,4 +96,54 @@ pub fn list_available_templates() -> Result<()> {
     }
 
     Ok(())
+}
+
+pub fn find_moustaches(txt: &str) -> IndexMap<String, String> {
+    let mut moustaches = IndexMap::new();
+    for cap in RE.captures_iter(txt) {
+        moustaches.insert(cap["moustache"].into(), String::new());
+    }
+    moustaches
+}
+
+pub fn get_response_for_moustaches(moustaches: &mut IndexMap<String, String>) -> Result<()> {
+    for (k, v) in moustaches.iter_mut() {
+        *v = crate::utility::read_from_stdin(&format!("{k} ⇒ "))?;
+    }
+    Ok(())
+}
+
+pub fn replace_moustaches(txt: &str, map: IndexMap<String, String>) -> String {
+    let mut txt = txt.to_string();
+    for (k, v) in map {
+        let to_rep = format!("{{{{{k}}}}}");
+        txt = txt.replace(&to_rep, &v).to_string();
+    }
+    txt
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn find_moustaches_in_template_test() {
+        let txt = "{{this}} {{is}} {{this}} {{again}}";
+        let mut map = IndexMap::new();
+        map.insert("this".to_string(), String::new());
+        map.insert("is".to_string(), String::new());
+        map.insert("again".to_string(), String::new());
+        assert_eq!(find_moustaches(txt), map);
+    }
+
+    #[test]
+    fn replace_in_template_test() {
+        let txt = "{{this}} {{is}} {{this}} {{again}}";
+        let out = "another boy another day";
+        let mut map = IndexMap::new();
+        map.insert("this".to_string(), "another".to_string());
+        map.insert("is".to_string(), "boy".to_string());
+        map.insert("again".to_string(), "day".to_string());
+        assert_eq!(replace_moustaches(txt, map), out);
+    }
 }
